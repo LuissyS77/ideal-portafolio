@@ -135,7 +135,7 @@ const products = [
 // Cambia por el número real (con código de país, sin + ni espacios)
 // Ejemplo Colombia: 573101234567
 // ─────────────────────────────────────────────
-const WHATSAPP_NUMBER = "573001234567";
+const WHATSAPP_NUMBER = "584245474054";
 
 function getWhatsAppLink(productName) {
   const msg = encodeURIComponent(

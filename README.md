@@ -1,94 +1,140 @@
-# 🌟 Portafolio Ideal — Guía de uso y deploy
+# 🌟 Portafolio — Zulimar Suárez · Distribuidora Ideal
 
-## Estructura del proyecto
+Sitio web estático de portafolio y catálogo de productos para **Zulimar Suárez**, distribuidora oficial de **Ideal**, empresa de productos de limpieza, aseo personal y cuidado del hogar.
 
-```
-ideal-portfolio/
-├── index.html          ← Página principal
-├── styles.css          ← Todos los estilos
-├── products.js         ← Mock de productos (datos)
-├── main.js             ← Lógica JS (menú, filtros, animaciones)
-└── images/
-    ├── hero-products.png   ← Imagen del hero (portada)
-    ├── profile.jpg         ← Foto de tu mamá
-    └── products/
-        ├── limpiapisos.jpg
-        ├── desengrasante.jpg
-        ├── jabon-polvo.jpg
-        ├── jabon-menta.jpg
-        ├── shampoo.jpg
-        ├── crema-aloe.jpg
-        ├── desodorante.jpg
-        └── kit-familia.jpg
-```
-
-> **Nota:** Si una imagen no existe, la web muestra un emoji como placeholder automáticamente. No hay errores rotos.
+🔗 **Sitio en producción:** [https://ideal-portafolio.onrender.com](https://ideal-portafolio.onrender.com)
 
 ---
 
-## ✏️ Cosas que debes personalizar
+## 📋 Descripción
 
-### 1. Datos de tu mamá (`index.html`)
-- Busca `[Nombre de tu mamá]` y reemplaza con su nombre real
-- En la sección About, edita los párrafos de descripción
-- En la sección "Sobre mí", ajusta los años de experiencia en `.about__stat-card`
+Página web de una sola página (SPA-like) que permite a los visitantes:
 
-### 2. Número de WhatsApp (`products.js`)
-```js
-const WHATSAPP_NUMBER = "573001234567";
-// Cambia por el número real (con código de país, sin +)
-// Ejemplo Colombia: 573101234567
+- Conocer a la distribuidora y su propuesta de valor
+- Explorar el catálogo de productos con filtros por categoría
+- Contactar directamente por WhatsApp para hacer pedidos
+- Unirse al emprendimiento como distribuidor/a
+
+---
+
+## 🗂️ Estructura del proyecto
+
+```
+ideal-portafolio/
+├── index.html        ← Estructura principal de la página
+├── styles.css        ← Todos los estilos y diseño responsive
+├── products.js       ← Mock de productos (datos del catálogo)
+├── main.js           ← Lógica JS: menú, filtros, animaciones
+└── img/
+    ├── zulimar-foto.jpg
+    ├── acondicionador.png
+    ├── alisado-organico.jpeg
+    ├── gel-arnica.jpeg
+    ├── jabon-azufre.jpeg
+    ├── jabon-glicerina.jpeg
+    ├── jabon-intimo.jpeg
+    ├── kit-limpieza.jpeg
+    ├── protector-solar.jpeg
+    └── shampoo-kids.jpeg
 ```
 
-### 3. Redes sociales (`index.html`)
-Busca y reemplaza:
-- `https://wa.me/573001234567` → tu número real
-- `https://instagram.com/ideal_distribuidora` → tu Instagram
-- `https://facebook.com/idealdistribuidora` → tu Facebook
-- `@ideal_distribuidora` → tu @
+---
 
-### 4. Productos (`products.js`)
-Cada producto tiene esta estructura:
+## 🛍️ Catálogo de productos
+
+| # | Producto | Categoría | Precio |
+|---|---|---|---|
+| 1 | Kit de Higiene | Aseo personal | $12,5 |
+| 2 | Kit de Limpieza | Limpieza | $12,5 |
+| 3 | Jabón de Azufre | Cuidado personal | $5 |
+| 4 | Jabón de Glicerina | Cuidado personal | $5 |
+| 5 | Acondicionador | Aseo personal | $8,5 |
+| 6 | Champú de Niño | Aseo personal | $8,5 |
+| 7 | Gel de Árnica | Cuidado personal | $9 |
+| 8 | Protector Solar | Cuidado personal | $10 |
+| 9 | Lavaplatos en Crema | Limpieza | $5 |
+| 10 | Alisado Orgánico | Cuidado personal | $20 |
+| 11 | Jabón Íntimo | Aseo personal | $9 |
+
+---
+
+## ✏️ Cómo actualizar el catálogo
+
+Edita el archivo `products.js`. Cada producto tiene esta estructura:
+
 ```js
 {
   id: 1,
   name: "Nombre del producto",
-  category: "limpieza",     // limpieza | aseo | cuidado
+  category: "limpieza",      // limpieza | aseo | cuidado
   categoryLabel: "Limpieza",
-  emoji: "🧴",               // Se muestra si no hay imagen
-  price: "$12.900",
-  description: "Descripción corta del producto.",
-  image: "images/products/nombre-foto.jpg",
-  badge: "Favorito",        // o null si no quieres badge
+  emoji: "🧹",               // Se muestra si no hay imagen
+  price: "$12,5",
+  description: "Descripción corta.",
+  image: "img/nombre-foto.jpg", // ruta local o URL externa
+  badge: "Nuevo",            // texto del badge o null
 }
 ```
 
-### 5. Imágenes
-- Crea la carpeta `images/` y dentro `images/products/`
-- Agrega las fotos con los nombres que pusiste en `products.js`
-- Formatos recomendados: `.jpg` o `.webp`
-- Tamaño recomendado: 600×600px para productos, 800×1000px para perfil
+Para cambiar el número de WhatsApp:
+
+```js
+const WHATSAPP_NUMBER = "573001234567"; // sin + ni espacios
+```
 
 ---
 
-## 🚀 Deploy en Render (Web estática)
+## 🚀 Correr localmente
 
-1. Sube todo el proyecto a un repositorio en **GitHub**
-2. Ve a [render.com](https://render.com) y crea una cuenta gratuita
-3. Haz clic en **"New +"** → **"Static Site"**
-4. Conecta tu repositorio de GitHub
-5. Configura:
-   - **Name:** ideal-portfolio (o el nombre que quieras)
-   - **Branch:** main
-   - **Build Command:** *(dejar vacío)*
-   - **Publish Directory:** `.` *(un punto, que significa la raíz)*
-6. Haz clic en **"Create Static Site"**
-7. ¡Listo! Render te dará una URL tipo `https://ideal-portfolio.onrender.com`
+No se necesita ningún servidor ni dependencias. Solo:
+
+1. Clona el repositorio:
+   ```bash
+   git clone https://github.com/LuissyS77/ideal-portafolio.git
+   cd ideal-portafolio
+   ```
+
+2. Abre `index.html` con la extensión **Live Server** de VS Code
+   - Clic derecho sobre `index.html` → **"Open with Live Server"**
+   - Se abre en `http://127.0.0.1:5500`
 
 ---
 
-## 💡 Tips
+## ☁️ Deploy en Render
 
-- **Sin build steps:** Al ser HTML puro, no necesitas `npm install` ni nada. Solo subir los archivos.
-- **Imágenes grandes:** Si las fotos pesan mucho, comprime en [squoosh.app](https://squoosh.app) antes de subir.
-- **Dominio propio:** Render permite conectar un dominio personalizado gratis en el plan gratuito.
+El sitio se despliega automáticamente en [Render](https://render.com) como **Static Site**.
+
+| Campo | Valor |
+|---|---|
+| Build Command | *(vacío)* |
+| Publish Directory | `.` |
+| Branch | `main` |
+
+Cada `git push` a `main` redespliega el sitio automáticamente.
+
+---
+
+## 🛠️ Tecnologías
+
+- **HTML5** — Estructura semántica
+- **CSS3** — Variables CSS, Flexbox, Grid, animaciones
+- **JavaScript vanilla** — Sin frameworks ni dependencias
+- **Google Fonts** — Playfair Display + DM Sans
+- **Render** — Hosting estático gratuito
+
+---
+
+## 📁 Reglas para las imágenes
+
+Para evitar errores en producción (Linux distingue mayúsculas):
+
+- ✅ Nombres en minúsculas: `jabon-azufre.jpeg`
+- ✅ Sin espacios: `kit-limpieza.jpeg`
+- ✅ Rutas sin `/` al inicio ni `./`: `img/nombre.jpeg`
+- ❌ `Jabon Azufre.JPEG` → no funciona en servidor
+
+---
+
+## 👩 Contacto
+
+**Zulimar Suárez** — Distribuidora Oficial Ideal  
