@@ -70,7 +70,7 @@ const products = [
     emoji: "👶",
     price: "$8,5",
     description: "Fórmula suave sin lágrimas, especialmente diseñada para el cabello de los más pequeños.",
-    image: "./img/shampoo-kids.jpeg",
+    image: "img/shampoo-kids.jpeg",
     badge: "Bebés",
   },
   {
@@ -92,7 +92,7 @@ const products = [
     emoji: "☀️",
     price: "$10",
     description: "Protección solar de amplio espectro para el cuidado diario de tu piel bajo el sol.",
-    image: "/img/protector-solar.jpeg",
+    image: "img/protector-solar.jpeg",
     badge: "Nuevo",
   },
   {
