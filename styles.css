@@ -37,6 +37,7 @@
 /* RESET */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
+
 body {
   font-family: var(--font-body);
   background: var(--white);
@@ -44,7 +45,12 @@ body {
   overflow-x: hidden;
   line-height: 1.6;
 }
+p, h1, h2, h3, h4, span, li {
+  cursor: default;
+}
+
 img { max-width: 100%; display: block; }
+
 a { text-decoration: none; color: inherit; }
 
 /* CONTAINER */
