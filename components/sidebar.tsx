@@ -11,6 +11,7 @@ import {
   Receipt,
   LogOut,
   User,
+  BarChart3,
 } from 'lucide-react';
 
 const navigation = [
@@ -18,6 +19,7 @@ const navigation = [
   { name: 'Nueva Venta', href: '/dashboard/nueva-venta', icon: ShoppingCart },
   { name: 'Ventas', href: '/dashboard/ventas', icon: Receipt },
   { name: 'Productos', href: '/dashboard/productos', icon: Package },
+  { name: 'Estadisticas', href: '/dashboard/estadisticas', icon: BarChart3 },
 ];
 
 export function Sidebar() {

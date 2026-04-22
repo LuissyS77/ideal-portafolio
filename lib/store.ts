@@ -217,3 +217,40 @@ export function getSalesStats(period: StatsPeriod = 'all'): SalesStats {
     pendingSales: filteredSales.filter(s => s.status !== 'completed').length,
   };
 }
+
+// Product sales statistics
+export interface ProductSalesStats {
+  productId: number;
+  productName: string;
+  category: string;
+  quantitySold: number;
+  totalRevenue: number;
+}
+
+export function getProductSalesStats(period: StatsPeriod = 'all'): ProductSalesStats[] {
+  const allSales = getSales();
+  const filteredSales = filterSalesByPeriod(allSales, period);
+  
+  const productMap = new Map<number, ProductSalesStats>();
+  
+  for (const sale of filteredSales) {
+    for (const item of sale.items) {
+      const existing = productMap.get(item.product.id);
+      if (existing) {
+        existing.quantitySold += item.quantity;
+        existing.totalRevenue += item.product.price * item.quantity;
+      } else {
+        productMap.set(item.product.id, {
+          productId: item.product.id,
+          productName: item.product.name,
+          category: item.product.categoryLabel || item.product.category,
+          quantitySold: item.quantity,
+          totalRevenue: item.product.price * item.quantity,
+        });
+      }
+    }
+  }
+  
+  // Sort by quantity sold (descending)
+  return Array.from(productMap.values()).sort((a, b) => b.quantitySold - a.quantitySold);
+}

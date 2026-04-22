@@ -20,6 +20,7 @@ import {
   Loader2,
   Check,
   Banknote,
+  Calendar,
 } from 'lucide-react';
 
 export default function NuevaVentaPage() {
@@ -35,6 +36,7 @@ export default function NuevaVentaPage() {
   const [notes, setNotes] = useState('');
   const [paymentType, setPaymentType] = useState<'full' | 'credit'>('full');
   const [initialPayment, setInitialPayment] = useState<string>('');
+  const [saleDate, setSaleDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -91,7 +93,10 @@ export default function NuevaVentaPage() {
 
     setIsSubmitting(true);
 
-    const now = new Date().toISOString();
+    // Use custom date if provided, otherwise use current date
+    const saleDateTime = saleDate 
+      ? new Date(saleDate + 'T12:00:00').toISOString() 
+      : new Date().toISOString();
     const saleId = generateId();
 
     // Create initial payment if exists
@@ -103,7 +108,7 @@ export default function NuevaVentaPage() {
       payments.push({
         id: generateId(),
         amount: total,
-        date: now,
+        date: saleDateTime,
         method: 'Pago completo',
       });
     } else if (initialPaymentAmount > 0) {
@@ -111,7 +116,7 @@ export default function NuevaVentaPage() {
       payments.push({
         id: generateId(),
         amount: Math.min(initialPaymentAmount, total),
-        date: now,
+        date: saleDateTime,
         method: 'Abono inicial',
       });
     }
@@ -135,8 +140,8 @@ export default function NuevaVentaPage() {
       remainingAmount,
       status: remainingAmount <= 0 ? 'completed' : paidAmount > 0 ? 'partial' : 'pending',
       notes: notes.trim() || undefined,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: saleDateTime,
+      updatedAt: new Date().toISOString(),
     };
 
     saveSale(sale);
@@ -305,7 +310,31 @@ export default function NuevaVentaPage() {
 
           {/* Client Form */}
           <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card p-4 space-y-4">
-            <h3 className="font-semibold text-card-foreground">Datos del Cliente</h3>
+            <h3 className="font-semibold text-card-foreground">Datos de la Venta</h3>
+
+            {/* Sale Date - Optional */}
+            <div>
+              <label className="block text-sm font-medium text-card-foreground mb-1">
+                Fecha de Venta (opcional)
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input
+                  type="date"
+                  value={saleDate}
+                  onChange={(e) => setSaleDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Deja vacio para usar la fecha actual
+              </p>
+            </div>
+
+            <hr className="border-border" />
+
+            <h4 className="font-medium text-card-foreground text-sm">Datos del Cliente</h4>
 
             <div>
               <label className="block text-sm font-medium text-card-foreground mb-1">
