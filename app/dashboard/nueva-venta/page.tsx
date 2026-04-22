@@ -3,8 +3,8 @@
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getProducts, saveSale, generateId, generateInstallments } from '@/lib/store';
-import { Product, CartItem, Sale } from '@/lib/types';
+import { getProducts, saveSale, generateId } from '@/lib/store';
+import { Product, CartItem, Sale, Payment } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import {
   Search,
@@ -19,6 +19,7 @@ import {
   CreditCard,
   Loader2,
   Check,
+  Banknote,
 } from 'lucide-react';
 
 export default function NuevaVentaPage() {
@@ -32,8 +33,8 @@ export default function NuevaVentaPage() {
   const [clientPhone, setClientPhone] = useState('');
   const [clientEmail, setClientEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [paymentType, setPaymentType] = useState<'full' | 'installments'>('full');
-  const [installmentsCount, setInstallmentsCount] = useState(3);
+  const [paymentType, setPaymentType] = useState<'full' | 'credit'>('full');
+  const [initialPayment, setInitialPayment] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -93,6 +94,31 @@ export default function NuevaVentaPage() {
     const now = new Date().toISOString();
     const saleId = generateId();
 
+    // Create initial payment if exists
+    const payments: Payment[] = [];
+    const initialPaymentAmount = parseFloat(initialPayment) || 0;
+    
+    if (paymentType === 'full') {
+      // Full payment
+      payments.push({
+        id: generateId(),
+        amount: total,
+        date: now,
+        method: 'Pago completo',
+      });
+    } else if (initialPaymentAmount > 0) {
+      // Initial payment for credit
+      payments.push({
+        id: generateId(),
+        amount: Math.min(initialPaymentAmount, total),
+        date: now,
+        method: 'Abono inicial',
+      });
+    }
+
+    const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+    const remainingAmount = Math.max(0, total - paidAmount);
+
     const sale: Sale = {
       id: saleId,
       clientName: clientName.trim(),
@@ -104,14 +130,10 @@ export default function NuevaVentaPage() {
       subtotal,
       total,
       paymentType,
-      installmentsCount: paymentType === 'installments' ? installmentsCount : undefined,
-      installments:
-        paymentType === 'installments'
-          ? generateInstallments(total, installmentsCount)
-          : undefined,
-      paidAmount: paymentType === 'full' ? total : 0,
-      remainingAmount: paymentType === 'full' ? 0 : total,
-      status: paymentType === 'full' ? 'completed' : 'pending',
+      payments,
+      paidAmount,
+      remainingAmount,
+      status: remainingAmount <= 0 ? 'completed' : paidAmount > 0 ? 'partial' : 'pending',
       notes: notes.trim() || undefined,
       createdAt: now,
       updatedAt: now,
@@ -358,7 +380,10 @@ export default function NuevaVentaPage() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setPaymentType('full')}
+                  onClick={() => {
+                    setPaymentType('full');
+                    setInitialPayment('');
+                  }}
                   className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
                     paymentType === 'full'
                       ? 'border-primary bg-primary/10 text-primary'
@@ -370,35 +395,42 @@ export default function NuevaVentaPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentType('installments')}
+                  onClick={() => setPaymentType('credit')}
                   className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-colors ${
-                    paymentType === 'installments'
+                    paymentType === 'credit'
                       ? 'border-primary bg-primary/10 text-primary'
                       : 'border-border bg-background text-muted-foreground hover:bg-secondary'
                   }`}
                 >
-                  <CreditCard className="h-4 w-4" />
-                  Cuotas
+                  <Banknote className="h-4 w-4" />
+                  Con Abonos
                 </button>
               </div>
             </div>
 
-            {paymentType === 'installments' && (
+            {paymentType === 'credit' && (
               <div>
-                <label className="block text-sm font-medium text-card-foreground mb-2">
-                  Numero de Cuotas
+                <label className="block text-sm font-medium text-card-foreground mb-1">
+                  Abono Inicial (opcional)
                 </label>
-                <select
-                  value={installmentsCount}
-                  onChange={(e) => setInstallmentsCount(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  {[2, 3, 4, 5, 6, 12].map((n) => (
-                    <option key={n} value={n}>
-                      {n} cuotas de {formatCurrency(total / n)}
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max={total}
+                    step="0.01"
+                    value={initialPayment}
+                    onChange={(e) => setInitialPayment(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="0.00"
+                  />
+                </div>
+                {initialPayment && parseFloat(initialPayment) > 0 && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Restante: {formatCurrency(Math.max(0, total - parseFloat(initialPayment)))}
+                  </p>
+                )}
               </div>
             )}
 

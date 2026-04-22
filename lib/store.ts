@@ -1,4 +1,4 @@
-import { Sale, Product, SalesStats } from './types';
+import { Sale, Product, SalesStats, Payment, StatsPeriod } from './types';
 import { IDEAL_PRODUCTS } from './products';
 
 // Simulated database storage (will be replaced with Supabase)
@@ -57,26 +57,53 @@ export function getSaleById(saleId: string): Sale | null {
   return existingSales.find(s => s.id === saleId) || null;
 }
 
-export function updateInstallmentStatus(
+// Add a payment (abono) to a sale
+export function addPayment(
   saleId: string, 
-  installmentId: string, 
-  status: 'paid' | 'pending',
-  paidDate?: string
+  amount: number, 
+  method?: string,
+  notes?: string
 ): Sale | null {
   const sale = getSaleById(saleId);
-  if (!sale || !sale.installments) return null;
+  if (!sale) return null;
 
-  const installment = sale.installments.find(i => i.id === installmentId);
-  if (!installment) return null;
+  const payment: Payment = {
+    id: generateId(),
+    amount,
+    date: new Date().toISOString(),
+    method,
+    notes,
+  };
 
-  installment.status = status;
-  installment.paidDate = status === 'paid' ? (paidDate || new Date().toISOString()) : null;
+  sale.payments.push(payment);
 
   // Recalculate paid amount
-  sale.paidAmount = sale.installments
-    .filter(i => i.status === 'paid')
-    .reduce((sum, i) => sum + i.amount, 0);
-  sale.remainingAmount = sale.total - sale.paidAmount;
+  sale.paidAmount = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+  sale.remainingAmount = Math.max(0, sale.total - sale.paidAmount);
+  
+  // Update sale status
+  if (sale.remainingAmount <= 0) {
+    sale.status = 'completed';
+  } else if (sale.paidAmount > 0) {
+    sale.status = 'partial';
+  } else {
+    sale.status = 'pending';
+  }
+
+  sale.updatedAt = new Date().toISOString();
+  return saveSale(sale);
+}
+
+// Delete a payment
+export function deletePayment(saleId: string, paymentId: string): Sale | null {
+  const sale = getSaleById(saleId);
+  if (!sale) return null;
+
+  sale.payments = sale.payments.filter(p => p.id !== paymentId);
+
+  // Recalculate paid amount
+  sale.paidAmount = sale.payments.reduce((sum, p) => sum + p.amount, 0);
+  sale.remainingAmount = Math.max(0, sale.total - sale.paidAmount);
   
   // Update sale status
   if (sale.remainingAmount <= 0) {
@@ -148,37 +175,45 @@ export function deleteProduct(productId: number): boolean {
   return false;
 }
 
-// Statistics
-export function getSalesStats(): SalesStats {
-  const allSales = getSales();
+// Filter sales by period
+export function filterSalesByPeriod(allSales: Sale[], period: StatsPeriod): Sale[] {
+  if (period === 'all') return allSales;
+
+  const now = new Date();
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   
-  return {
-    totalSales: allSales.length,
-    totalRevenue: allSales.reduce((sum, s) => sum + s.total, 0),
-    pendingAmount: allSales.reduce((sum, s) => sum + s.remainingAmount, 0),
-    completedSales: allSales.filter(s => s.status === 'completed').length,
-    pendingSales: allSales.filter(s => s.status !== 'completed').length,
-  };
+  let filterDate: Date;
+  
+  switch (period) {
+    case 'daily':
+      filterDate = startOfDay;
+      break;
+    case 'weekly':
+      filterDate = new Date(startOfDay);
+      filterDate.setDate(filterDate.getDate() - 7);
+      break;
+    case 'monthly':
+      filterDate = new Date(startOfDay);
+      filterDate.setMonth(filterDate.getMonth() - 1);
+      break;
+    default:
+      return allSales;
+  }
+
+  return allSales.filter(sale => new Date(sale.createdAt) >= filterDate);
 }
 
-// Generate installments for a sale
-export function generateInstallments(total: number, count: number): Omit<Sale, 'id' | 'clientName' | 'clientPhone' | 'clientEmail' | 'vendorId' | 'vendorName' | 'items' | 'subtotal' | 'notes' | 'createdAt' | 'updatedAt'>['installments'] {
-  const installmentAmount = Math.round((total / count) * 100) / 100;
-  const installments = [];
+// Statistics with period filter
+export function getSalesStats(period: StatsPeriod = 'all'): SalesStats {
+  const allSales = getSales();
+  const filteredSales = filterSalesByPeriod(allSales, period);
   
-  for (let i = 0; i < count; i++) {
-    const dueDate = new Date();
-    dueDate.setMonth(dueDate.getMonth() + i + 1);
-    
-    installments.push({
-      id: generateId(),
-      number: i + 1,
-      amount: i === count - 1 ? Math.round((total - installmentAmount * (count - 1)) * 100) / 100 : installmentAmount,
-      dueDate: dueDate.toISOString(),
-      paidDate: null,
-      status: 'pending' as const,
-    });
-  }
-  
-  return installments;
+  return {
+    totalSales: filteredSales.length,
+    totalRevenue: filteredSales.reduce((sum, s) => sum + s.total, 0),
+    totalPaid: filteredSales.reduce((sum, s) => sum + s.paidAmount, 0),
+    pendingAmount: filteredSales.reduce((sum, s) => sum + s.remainingAmount, 0),
+    completedSales: filteredSales.filter(s => s.status === 'completed').length,
+    pendingSales: filteredSales.filter(s => s.status !== 'completed').length,
+  };
 }

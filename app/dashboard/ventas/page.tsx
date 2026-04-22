@@ -179,7 +179,7 @@ export default function VentasPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">
-                      {sale.paymentType === 'full' ? 'Contado' : `${sale.installmentsCount} cuotas`}
+                      {sale.paymentType === 'full' ? 'Contado' : 'Abonos'}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">

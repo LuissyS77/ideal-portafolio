@@ -25,13 +25,12 @@ export interface CartItem {
   quantity: number;
 }
 
-export interface Installment {
+export interface Payment {
   id: string;
-  number: number;
   amount: number;
-  dueDate: string;
-  paidDate: string | null;
-  status: 'pending' | 'paid' | 'overdue';
+  date: string;
+  method?: string;
+  notes?: string;
 }
 
 export interface Sale {
@@ -44,9 +43,8 @@ export interface Sale {
   items: CartItem[];
   subtotal: number;
   total: number;
-  paymentType: 'full' | 'installments';
-  installmentsCount?: number;
-  installments?: Installment[];
+  paymentType: 'full' | 'credit';
+  payments: Payment[];
   paidAmount: number;
   remainingAmount: number;
   status: 'pending' | 'partial' | 'completed';
@@ -58,7 +56,10 @@ export interface Sale {
 export interface SalesStats {
   totalSales: number;
   totalRevenue: number;
+  totalPaid: number;
   pendingAmount: number;
   completedSales: number;
   pendingSales: number;
 }
+
+export type StatsPeriod = 'daily' | 'weekly' | 'monthly' | 'all';
