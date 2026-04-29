@@ -123,7 +123,7 @@ export default function NuevaVentaPage() {
       paymentType,
       paidAmount,
       remainingAmount,
-      status: remainingAmount <= 0 ? 'completed' : paidAmount > 0 ? 'partial' : 'pending',
+      status: (remainingAmount <= 0 ? 'completed' : paidAmount > 0 ? 'partial' : 'pending') as 'pending' | 'partial' | 'completed',
       notes: notes.trim() || undefined,
     };
 

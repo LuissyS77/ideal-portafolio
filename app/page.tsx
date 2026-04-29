@@ -127,16 +127,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Demo credentials */}
-          <div className="mt-6 p-4 rounded-lg bg-secondary">
-            <p className="text-xs font-medium text-secondary-foreground mb-2">Usuarios de prueba:</p>
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p><span className="font-medium">Admin:</span> admin@ideal.com / admin123</p>
-              <p><span className="font-medium">Vendedor:</span> vendedor1@ideal.com / vendedor123</p>
-              <p><span className="font-medium">Viewer:</span> viewer@ideal.com / viewer123</p>
-            </div>
-          </div>
         </div>
       </div>
     </main>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { getProducts, getCustomProducts, saveProduct, deleteProduct } from '@/lib/store';
+import { getProducts, saveProduct, deleteProduct } from '@/lib/store';
 import { CATEGORIES } from '@/lib/products';
 import { Product } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
