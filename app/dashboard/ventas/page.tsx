@@ -5,19 +5,13 @@ import Link from 'next/link';
 import { getSales, deleteSale } from '@/lib/store';
 import { Sale } from '@/lib/types';
 import { formatCurrency, formatShortDate } from '@/lib/utils';
-import {
-  Search,
-  Filter,
-  Eye,
-  Trash2,
-  Receipt,
-  AlertCircle,
-} from 'lucide-react';
+import { Search, Filter, Eye, Trash2, Receipt, Loader2 } from 'lucide-react';
 
 type FilterStatus = 'all' | 'pending' | 'partial' | 'completed';
 
 export default function VentasPage() {
   const [sales, setSales] = useState<Sale[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -26,9 +20,16 @@ export default function VentasPage() {
     loadSales();
   }, []);
 
-  const loadSales = () => {
-    const allSales = getSales();
-    setSales(allSales.reverse());
+  const loadSales = async () => {
+    setIsLoading(true);
+    try {
+      const allSales = await getSales();
+      setSales(allSales);
+    } catch (error) {
+      console.error('Error cargando ventas:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredSales = sales.filter((sale) => {
@@ -40,11 +41,22 @@ export default function VentasPage() {
     return matchesSearch && matchesFilter;
   });
 
-  const handleDelete = (saleId: string) => {
-    deleteSale(saleId);
-    loadSales();
+  const handleDelete = async (saleId: string) => {
+    const success = await deleteSale(saleId);
+    if (success) {
+      await loadSales();
+    }
     setDeleteConfirm(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Cargando historial de ventas...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

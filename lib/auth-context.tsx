@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from './types';
-import { authenticateUser, getUserById } from './users';
+import { supabase } from './supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -18,32 +18,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
-    const storedUserId = localStorage.getItem('ideal_user_id');
-    if (storedUserId) {
-      const foundUser = getUserById(storedUserId);
-      if (foundUser) {
-        setUser(foundUser);
+    // Escuchar cambios en la sesión de Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Al iniciar sesión o refrescar, buscamos los datos extras en la tabla 'profiles'
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile) {
+          setUser({
+            id: profile.id,
+            name: profile.name,
+            email: profile.email,
+            password: '', // No guardamos el hash en el cliente
+            role: profile.role as any,
+          });
+        }
+      } else {
+        setUser(null);
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    const foundUser = authenticateUser(email, password);
-    
-    if (foundUser) {
-      setUser(foundUser);
-      localStorage.setItem('ideal_user_id', foundUser.id);
-      return { success: true };
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return { success: false, error: 'Credenciales incorrectas o usuario no encontrado' };
     }
-    
-    return { success: false, error: 'Credenciales incorrectas' };
+
+    return { success: true };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('ideal_user_id');
   };
 
   return (

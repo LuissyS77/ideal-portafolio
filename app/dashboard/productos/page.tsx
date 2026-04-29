@@ -18,6 +18,7 @@ import {
 
 export default function ProductosPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -38,9 +39,16 @@ export default function ProductosPage() {
     loadProducts();
   }, []);
 
-  const loadProducts = () => {
-    const allProducts = getProducts();
-    setProducts(allProducts);
+  const loadProducts = async () => {
+    setIsLoading(true);
+    try {
+      const allProducts = await getProducts();
+      setProducts(allProducts);
+    } catch (error) {
+      console.error('Error al cargar productos:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filteredProducts = useMemo(() => {
@@ -50,7 +58,7 @@ export default function ProductosPage() {
       (p) =>
         p.name.toLowerCase().includes(term) ||
         p.category.toLowerCase().includes(term) ||
-        p.categoryLabel.toLowerCase().includes(term)
+        (p.categoryLabel && p.categoryLabel.toLowerCase().includes(term))
     );
   }, [products, searchTerm]);
 
@@ -64,8 +72,8 @@ export default function ProductosPage() {
         name: product.name,
         price: product.price.toString(),
         category: product.category,
-        description: product.description,
-        image: product.image,
+        description: product.description || '',
+        image: product.image || '',
         badge: product.badge || '',
       });
     } else {
@@ -93,8 +101,8 @@ export default function ProductosPage() {
 
     const categoryLabel = CATEGORIES.find((c) => c.value === formData.category)?.label || 'Otro';
 
-    const productData: Product = {
-      id: editingProduct?.id || Date.now(),
+    const productData: Partial<Product> = {
+      id: editingProduct?.id,
       name: formData.name.trim(),
       price: parseFloat(formData.price),
       category: formData.category,
@@ -105,17 +113,33 @@ export default function ProductosPage() {
       isCustom: true,
     };
 
-    saveProduct(productData);
-    loadProducts();
-    closeModal();
-    setIsSubmitting(false);
+    try {
+      await saveProduct(productData);
+      await loadProducts();
+      closeModal();
+    } catch (error) {
+      console.error('Error al guardar producto:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDelete = (productId: number) => {
-    deleteProduct(productId);
-    loadProducts();
+  const handleDelete = async (productId: number) => {
+    const success = await deleteProduct(productId);
+    if (success) {
+      await loadProducts();
+    }
     setDeleteConfirm(null);
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Cargando catálogo de productos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

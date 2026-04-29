@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
-import { getProducts, saveSale, generateId } from '@/lib/store';
-import { Product, CartItem, Sale, Payment } from '@/lib/types';
+import { getProducts, saveSale } from '@/lib/store';
+import { Product, CartItem } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import {
   Search,
@@ -26,7 +26,8 @@ import {
 export default function NuevaVentaPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const products = useMemo(() => getProducts(), []);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -40,6 +41,20 @@ export default function NuevaVentaPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const data = await getProducts();
+        setProducts(data);
+      } catch (error) {
+        console.error('Error cargando productos:', error);
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+    loadProducts();
+  }, []);
+
   const filteredProducts = useMemo(() => {
     if (!searchTerm) return products;
     const term = searchTerm.toLowerCase();
@@ -47,7 +62,7 @@ export default function NuevaVentaPage() {
       (p) =>
         p.name.toLowerCase().includes(term) ||
         p.category.toLowerCase().includes(term) ||
-        p.categoryLabel.toLowerCase().includes(term)
+        (p.categoryLabel && p.categoryLabel.toLowerCase().includes(term))
     );
   }, [products, searchTerm]);
 
@@ -93,63 +108,38 @@ export default function NuevaVentaPage() {
 
     setIsSubmitting(true);
 
-    // Use custom date if provided, otherwise use current date
-    const saleDateTime = saleDate 
-      ? new Date(saleDate + 'T12:00:00').toISOString() 
-      : new Date().toISOString();
-    const saleId = generateId();
-
-    // Create initial payment if exists
-    const payments: Payment[] = [];
-    const initialPaymentAmount = parseFloat(initialPayment) || 0;
-    
-    if (paymentType === 'full') {
-      // Full payment
-      payments.push({
-        id: generateId(),
-        amount: total,
-        date: saleDateTime,
-        method: 'Pago completo',
-      });
-    } else if (initialPaymentAmount > 0) {
-      // Initial payment for credit
-      payments.push({
-        id: generateId(),
-        amount: Math.min(initialPaymentAmount, total),
-        date: saleDateTime,
-        method: 'Abono inicial',
-      });
-    }
-
-    const paidAmount = payments.reduce((sum, p) => sum + p.amount, 0);
+    const initialPaymentAmount = paymentType === 'full' ? total : (parseFloat(initialPayment) || 0);
+    const paidAmount = Math.min(initialPaymentAmount, total);
     const remainingAmount = Math.max(0, total - paidAmount);
 
-    const sale: Sale = {
-      id: saleId,
+    const saleData = {
       clientName: clientName.trim(),
       clientPhone: clientPhone.trim() || undefined,
-      clientEmail: clientEmail.trim() || undefined,
       vendorId: user?.id,
       vendorName: user?.name,
       items: cart,
       subtotal,
       total,
       paymentType,
-      payments,
       paidAmount,
       remainingAmount,
       status: remainingAmount <= 0 ? 'completed' : paidAmount > 0 ? 'partial' : 'pending',
       notes: notes.trim() || undefined,
-      createdAt: saleDateTime,
-      updatedAt: new Date().toISOString(),
     };
 
-    saveSale(sale);
-    setShowSuccess(true);
-
-    setTimeout(() => {
-      router.push(`/dashboard/ventas/${saleId}`);
-    }, 1500);
+    try {
+      const success = await saveSale(saleData);
+      if (success) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          router.push(`/dashboard/ventas`);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error('Error al registrar venta:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (showSuccess) {
@@ -387,7 +377,7 @@ export default function NuevaVentaPage() {
 
             <div>
               <label className="block text-sm font-medium text-card-foreground mb-1">
-                Notas
+                Notas / Referencia de Pago
               </label>
               <div className="relative">
                 <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -395,7 +385,7 @@ export default function NuevaVentaPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                  placeholder="Notas adicionales..."
+                  placeholder="Ej: Pago Movil Ref 1234..."
                   rows={2}
                 />
               </div>

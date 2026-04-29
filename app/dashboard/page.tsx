@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   Banknote,
   Calendar,
+  Loader2,
 } from 'lucide-react';
 
 const periodLabels: Record<StatsPeriod, string> = {
@@ -27,14 +28,38 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<SalesStats | null>(null);
   const [recentSales, setRecentSales] = useState<Sale[]>([]);
   const [period, setPeriod] = useState<StatsPeriod>('monthly');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const salesStats = getSalesStats(period);
-    setStats(salesStats);
-    
-    const allSales = getSales();
-    setRecentSales(allSales.slice(-5).reverse());
+    const loadDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        const [salesStats, allSales] = await Promise.all([
+          getSalesStats(period),
+          getSales()
+        ]);
+        
+        setStats(salesStats);
+        // Mostrar las 5 ventas más recientes
+        setRecentSales(allSales.slice(0, 5));
+      } catch (error) {
+        console.error('Error cargando datos del dashboard:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadDashboardData();
   }, [period]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Cargando resumen del negocio...</p>
+      </div>
+    );
+  }
 
   const statCards = [
     {

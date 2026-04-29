@@ -1,225 +1,60 @@
-import { Sale, Product, SalesStats, Payment, StatsPeriod } from './types';
-import { IDEAL_PRODUCTS } from './products';
+import { 
+  Sale, 
+  Product, 
+  SalesStats, 
+  StatsPeriod,
+  Seller,
+  SellerAssignment,
+  SellerPayment,
+  AssignmentFraction
+} from './types';
+import { supabase } from './supabase';
 
-// Simulated database storage (will be replaced with Supabase)
-let sales: Sale[] = [];
-let customProducts: Product[] = [];
-
-// Generate unique ID
-export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+// Helper types for Supabase responses
+interface SaleItemResponse {
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  price_at_sale: string | number;
 }
 
-// Sales functions
-export function getSales(): Sale[] {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('ideal_sales');
-    if (stored) {
-      sales = JSON.parse(stored);
-    }
-  }
-  return sales;
+interface PaymentResponse {
+  id: string;
+  amount: string | number;
+  payment_date: string;
+  method?: string;
+  notes?: string;
 }
 
-export function saveSale(sale: Sale): Sale {
-  const existingSales = getSales();
-  const existingIndex = existingSales.findIndex(s => s.id === sale.id);
-  
-  if (existingIndex >= 0) {
-    existingSales[existingIndex] = sale;
-  } else {
-    existingSales.push(sale);
-  }
-  
-  sales = existingSales;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('ideal_sales', JSON.stringify(sales));
-  }
-  return sale;
+interface SellerPaymentResponse {
+  id: string;
+  assignment_id: string;
+  amount: string | number;
+  payment_method: string;
+  reference: string;
+  notes?: string;
+  payment_date: string;
 }
 
-export function deleteSale(saleId: string): boolean {
-  const existingSales = getSales();
-  const filtered = existingSales.filter(s => s.id !== saleId);
-  
-  if (filtered.length < existingSales.length) {
-    sales = filtered;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ideal_sales', JSON.stringify(sales));
-    }
-    return true;
-  }
-  return false;
+interface SaleData {
+  clientName: string;
+  clientPhone?: string;
+  vendorId?: string;
+  vendorName?: string;
+  subtotal: number;
+  total: number;
+  paymentType: 'full' | 'credit';
+  paidAmount: number;
+  remainingAmount: number;
+  status: 'pending' | 'partial' | 'completed';
+  notes?: string;
+  items: {
+    product: { id: number; name: string; price: number };
+    quantity: number;
+  }[];
 }
 
-export function getSaleById(saleId: string): Sale | null {
-  const existingSales = getSales();
-  return existingSales.find(s => s.id === saleId) || null;
-}
-
-// Add a payment (abono) to a sale
-export function addPayment(
-  saleId: string, 
-  amount: number, 
-  method?: string,
-  notes?: string
-): Sale | null {
-  const sale = getSaleById(saleId);
-  if (!sale) return null;
-
-  const payment: Payment = {
-    id: generateId(),
-    amount,
-    date: new Date().toISOString(),
-    method,
-    notes,
-  };
-
-  sale.payments.push(payment);
-
-  // Recalculate paid amount
-  sale.paidAmount = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-  sale.remainingAmount = Math.max(0, sale.total - sale.paidAmount);
-  
-  // Update sale status
-  if (sale.remainingAmount <= 0) {
-    sale.status = 'completed';
-  } else if (sale.paidAmount > 0) {
-    sale.status = 'partial';
-  } else {
-    sale.status = 'pending';
-  }
-
-  sale.updatedAt = new Date().toISOString();
-  return saveSale(sale);
-}
-
-// Delete a payment
-export function deletePayment(saleId: string, paymentId: string): Sale | null {
-  const sale = getSaleById(saleId);
-  if (!sale) return null;
-
-  sale.payments = sale.payments.filter(p => p.id !== paymentId);
-
-  // Recalculate paid amount
-  sale.paidAmount = sale.payments.reduce((sum, p) => sum + p.amount, 0);
-  sale.remainingAmount = Math.max(0, sale.total - sale.paidAmount);
-  
-  // Update sale status
-  if (sale.remainingAmount <= 0) {
-    sale.status = 'completed';
-  } else if (sale.paidAmount > 0) {
-    sale.status = 'partial';
-  } else {
-    sale.status = 'pending';
-  }
-
-  sale.updatedAt = new Date().toISOString();
-  return saveSale(sale);
-}
-
-// Product functions
-export function getProducts(): Product[] {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('ideal_custom_products');
-    if (stored) {
-      customProducts = JSON.parse(stored);
-    }
-  }
-  return [...IDEAL_PRODUCTS, ...customProducts];
-}
-
-export function getCustomProducts(): Product[] {
-  if (typeof window !== 'undefined') {
-    const stored = localStorage.getItem('ideal_custom_products');
-    if (stored) {
-      customProducts = JSON.parse(stored);
-    }
-  }
-  return customProducts;
-}
-
-export function saveProduct(product: Product): Product {
-  const existing = getCustomProducts();
-  const newProduct = {
-    ...product,
-    id: product.id || Date.now(),
-    isCustom: true,
-  };
-  
-  const existingIndex = existing.findIndex(p => p.id === newProduct.id);
-  if (existingIndex >= 0) {
-    existing[existingIndex] = newProduct;
-  } else {
-    existing.push(newProduct);
-  }
-  
-  customProducts = existing;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('ideal_custom_products', JSON.stringify(customProducts));
-  }
-  return newProduct;
-}
-
-export function deleteProduct(productId: number): boolean {
-  const existing = getCustomProducts();
-  const filtered = existing.filter(p => p.id !== productId);
-  
-  if (filtered.length < existing.length) {
-    customProducts = filtered;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ideal_custom_products', JSON.stringify(customProducts));
-    }
-    return true;
-  }
-  return false;
-}
-
-// Filter sales by period
-export function filterSalesByPeriod(allSales: Sale[], period: StatsPeriod): Sale[] {
-  if (period === 'all') return allSales;
-
-  const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  
-  let filterDate: Date;
-  
-  switch (period) {
-    case 'daily':
-      filterDate = startOfDay;
-      break;
-    case 'weekly':
-      filterDate = new Date(startOfDay);
-      filterDate.setDate(filterDate.getDate() - 7);
-      break;
-    case 'monthly':
-      filterDate = new Date(startOfDay);
-      filterDate.setMonth(filterDate.getMonth() - 1);
-      break;
-    default:
-      return allSales;
-  }
-
-  return allSales.filter(sale => new Date(sale.createdAt) >= filterDate);
-}
-
-// Statistics with period filter
-export function getSalesStats(period: StatsPeriod = 'all'): SalesStats {
-  const allSales = getSales();
-  const filteredSales = filterSalesByPeriod(allSales, period);
-  
-  return {
-    totalSales: filteredSales.length,
-    totalRevenue: filteredSales.reduce((sum, s) => sum + s.total, 0),
-    totalPaid: filteredSales.reduce((sum, s) => sum + s.paidAmount, 0),
-    pendingAmount: filteredSales.reduce((sum, s) => sum + s.remainingAmount, 0),
-    completedSales: filteredSales.filter(s => s.status === 'completed').length,
-    pendingSales: filteredSales.filter(s => s.status !== 'completed').length,
-  };
-}
-
-// Product sales statistics
-export interface ProductSalesStats {
+interface ProductSalesStat {
   productId: number;
   productName: string;
   category: string;
@@ -227,30 +62,462 @@ export interface ProductSalesStats {
   totalRevenue: number;
 }
 
-export function getProductSalesStats(period: StatsPeriod = 'all'): ProductSalesStats[] {
-  const allSales = getSales();
-  const filteredSales = filterSalesByPeriod(allSales, period);
+// ------------------------------------------------------------------
+// PRODUCTOS
+// ------------------------------------------------------------------
+
+export async function getProducts(): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error cargando productos:', error);
+    return [];
+  }
+
+  return data.map(p => ({
+    id: p.id,
+    name: p.name,
+    category: p.category,
+    categoryLabel: p.category_label,
+    price: Number(p.price),
+    description: p.description,
+    image: p.image,
+    badge: p.badge,
+    isCustom: p.is_custom
+  }));
+}
+
+export async function saveProduct(product: Partial<Product>): Promise<Product | null> {
+  const productToSave: any = {
+    name: product.name,
+    category: product.category,
+    category_label: product.categoryLabel,
+    price: product.price,
+    description: product.description,
+    image: product.image,
+    badge: product.badge,
+    is_custom: true
+  };
+
+  if (product.id) {
+    productToSave.id = product.id;
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .upsert(productToSave)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al guardar producto:', error.message, error.details);
+    return null;
+  }
   
-  const productMap = new Map<number, ProductSalesStats>();
+  return { ...data, categoryLabel: data.category_label, isCustom: data.is_custom, price: Number(data.price) };
+}
+
+export async function deleteProduct(productId: number): Promise<boolean> {
+  const { error } = await supabase.from('products').delete().eq('id', productId);
+  return !error;
+}
+
+// ------------------------------------------------------------------
+// VENTAS
+// ------------------------------------------------------------------
+
+export async function getSales(): Promise<Sale[]> {
+  const { data, error } = await supabase
+    .from('sales')
+    .select(`*, items:sale_items(*), payments(*)`)
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+
+  return data.map(s => ({
+    id: s.id,
+    clientName: s.client_name,
+    clientPhone: s.client_phone,
+    clientEmail: s.client_email,
+    vendorId: s.vendor_id,
+    vendorName: s.vendor_name,
+    subtotal: Number(s.subtotal),
+    total: Number(s.total),
+    paymentType: s.payment_type,
+    paidAmount: Number(s.paid_amount),
+    remainingAmount: Number(s.remaining_amount),
+    status: s.status,
+    notes: s.notes,
+    createdAt: s.created_at,
+    updatedAt: s.updated_at,
+    items: s.items.map((i: SaleItemResponse) => ({
+      product: { id: i.product_id, name: i.product_name, price: Number(i.price_at_sale) },
+      quantity: i.quantity
+    })),
+    payments: s.payments.map((p: PaymentResponse) => ({
+      id: p.id,
+      amount: Number(p.amount),
+      date: p.payment_date,
+      method: p.method,
+      notes: p.notes
+    }))
+  }));
+}
+
+export async function getSaleById(saleId: string): Promise<Sale | null> {
+  const sales = await getSales();
+  return sales.find(s => s.id === saleId) || null;
+}
+
+export async function saveSale(saleData: SaleData): Promise<boolean> {
+  console.log('Iniciando guardado de venta:', saleData);
   
-  for (const sale of filteredSales) {
+  // 1. Insertar la venta
+  const { data: sale, error: saleError } = await supabase
+    .from('sales')
+    .insert({
+      client_name: saleData.clientName,
+      client_phone: saleData.clientPhone,
+      vendor_id: saleData.vendorId || null,
+      vendor_name: saleData.vendorName,
+      subtotal: saleData.subtotal,
+      total: saleData.total,
+      payment_type: saleData.paymentType,
+      paid_amount: saleData.paidAmount,
+      remaining_amount: saleData.remainingAmount,
+      status: saleData.status,
+      notes: saleData.notes
+    })
+    .select()
+    .single();
+
+  if (saleError) {
+    console.error('Error de Supabase al insertar venta:', saleError.message, saleError.details);
+    return false;
+  }
+
+  console.log('Venta creada con ID:', sale.id);
+
+  // 2. Insertar los items de la venta
+  const itemsToInsert = saleData.items.map((item) => ({
+    sale_id: sale.id,
+    product_id: item.product.id,
+    product_name: item.product.name,
+    quantity: item.quantity,
+    price_at_sale: item.product.price
+  }));
+
+  const { error: itemsError } = await supabase.from('sale_items').insert(itemsToInsert);
+  
+  if (itemsError) {
+    console.error('Error al insertar items de venta:', itemsError.message);
+    // Intentamos continuar aunque fallen los items para no dejar la UI colgada
+  }
+
+  // 3. Registrar el pago inicial si existe
+  if (saleData.paidAmount > 0) {
+    const { error: payError } = await supabase.from('payments').insert({
+      sale_id: sale.id,
+      amount: saleData.paidAmount,
+      method: saleData.paymentType === 'full' ? 'Pago completo' : 'Abono inicial',
+      notes: saleData.notes || 'Pago registrado al crear la venta'
+    });
+    
+    if (payError) {
+      console.error('Error al insertar pago inicial:', payError.message);
+    }
+  }
+
+  return true;
+}
+
+export async function deleteSale(saleId: string): Promise<boolean> {
+  const { error } = await supabase.from('sales').delete().eq('id', saleId);
+  return !error;
+}
+
+// ------------------------------------------------------------------
+// PAGOS / ABONOS (RECALCULO REAL)
+// ------------------------------------------------------------------
+
+async function syncSaleBalances(saleId: string) {
+  // 1. Obtener todos los pagos de esta venta
+  const { data: payments } = await supabase
+    .from('payments')
+    .select('amount')
+    .eq('sale_id', saleId);
+  
+  // 2. Obtener el total de la venta
+  const { data: sale } = await supabase
+    .from('sales')
+    .select('total')
+    .eq('id', saleId)
+    .single();
+
+  if (!sale) return;
+
+  const totalPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalSale = Number(sale.total);
+  const remaining = Math.max(0, totalSale - totalPaid);
+  
+  let status: 'pending' | 'partial' | 'completed' = 'pending';
+  if (remaining <= 0) status = 'completed';
+  else if (totalPaid > 0) status = 'partial';
+
+  // 3. Actualizar la venta con los valores reales
+  await supabase
+    .from('sales')
+    .update({
+      paid_amount: totalPaid,
+      remaining_amount: remaining,
+      status: status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', saleId);
+}
+
+export async function addPayment(saleId: string, amount: number, method?: string, notes?: string): Promise<boolean> {
+  const { error } = await supabase.from('payments').insert({
+    sale_id: saleId,
+    amount,
+    method,
+    notes
+  });
+
+  if (error) return false;
+  await syncSaleBalances(saleId);
+  return true;
+}
+
+export async function deletePayment(saleId: string, paymentId: string): Promise<boolean> {
+  const { error } = await supabase.from('payments').delete().eq('id', paymentId);
+  if (error) return false;
+  await syncSaleBalances(saleId);
+  return true;
+}
+
+// ------------------------------------------------------------------
+// ESTADÍSTICAS
+// ------------------------------------------------------------------
+
+export async function getSalesStats(period: StatsPeriod = 'all'): Promise<SalesStats> {
+  const sales = await getSales();
+  const now = new Date();
+  const filtered = sales.filter(sale => {
+    if (period === 'all') return true;
+    const saleDate = new Date(sale.createdAt);
+    if (period === 'daily') return saleDate.toDateString() === now.toDateString();
+    if (period === 'weekly') {
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      return saleDate >= weekAgo;
+    }
+    if (period === 'monthly') return saleDate.getMonth() === now.getMonth() && saleDate.getFullYear() === now.getFullYear();
+    return true;
+  });
+  
+  return {
+    totalSales: filtered.length,
+    totalRevenue: filtered.reduce((sum, s) => sum + s.total, 0),
+    totalPaid: filtered.reduce((sum, s) => sum + s.paidAmount, 0),
+    pendingAmount: filtered.reduce((sum, s) => sum + s.remainingAmount, 0),
+    completedSales: filtered.filter(s => s.status === 'completed').length,
+    pendingSales: filtered.filter(s => s.status !== 'completed').length,
+  };
+}
+
+export async function getProductSalesStats(period: StatsPeriod = 'all'): Promise<ProductSalesStat[]> {
+  const [sales, products] = await Promise.all([getSales(), getProducts()]);
+  const productMap = new Map<number, ProductSalesStat>();
+  const productCategoryMap = new Map<number, string>();
+  
+  products.forEach(p => {
+    productCategoryMap.set(Number(p.id), p.categoryLabel || p.category);
+  });
+
+  const now = new Date();
+
+  for (const sale of sales) {
+    // Filtrar por periodo si no es 'all'
+    if (period !== 'all') {
+      const saleDate = new Date(sale.createdAt);
+      if (period === 'daily' && saleDate.toDateString() !== now.toDateString()) continue;
+      if (period === 'weekly') {
+        const weekAgo = new Date();
+        weekAgo.setDate(now.getDate() - 7);
+        if (saleDate < weekAgo) continue;
+      }
+      if (period === 'monthly' && (saleDate.getMonth() !== now.getMonth() || saleDate.getFullYear() !== now.getFullYear())) continue;
+    }
+
     for (const item of sale.items) {
-      const existing = productMap.get(item.product.id);
+      const productId = Number(item.product.id);
+      const existing = productMap.get(productId);
       if (existing) {
         existing.quantitySold += item.quantity;
-        existing.totalRevenue += item.product.price * item.quantity;
+        existing.totalRevenue += (item.product.price * item.quantity);
       } else {
-        productMap.set(item.product.id, {
-          productId: item.product.id,
+        productMap.set(productId, {
+          productId,
           productName: item.product.name,
-          category: item.product.categoryLabel || item.product.category,
+          category: productCategoryMap.get(productId) || 'Sin categoría',
           quantitySold: item.quantity,
           totalRevenue: item.product.price * item.quantity,
         });
       }
     }
   }
-  
-  // Sort by quantity sold (descending)
   return Array.from(productMap.values()).sort((a, b) => b.quantitySold - a.quantitySold);
 }
+
+// ------------------------------------------------------------------
+// VENDEDORAS Y ASIGNACIONES
+// ------------------------------------------------------------------
+
+export async function getSellers(): Promise<Seller[]> {
+  const { data, error } = await supabase
+    .from('sellers')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (error) return [];
+
+  return data.map(s => ({
+    id: s.id,
+    name: s.name,
+    phone: s.phone,
+    email: s.email,
+    createdAt: s.created_at
+  }));
+}
+
+export async function saveSeller(seller: Partial<Seller>): Promise<Seller | null> {
+  const { data, error } = await supabase
+    .from('sellers')
+    .upsert({
+      id: seller.id,
+      name: seller.name,
+      phone: seller.phone,
+      email: seller.email
+    })
+    .select()
+    .single();
+
+  if (error) return null;
+  return {
+    id: data.id,
+    name: data.name,
+    phone: data.phone,
+    email: data.email,
+    createdAt: data.created_at
+  };
+}
+
+export async function getSellerAssignments(sellerId: string): Promise<SellerAssignment[]> {
+  const { data, error } = await supabase
+    .from('seller_assignments')
+    .select('*, payments:seller_payments(*)')
+    .eq('seller_id', sellerId)
+    .order('assigned_date', { ascending: false });
+
+  if (error) return [];
+
+  return data.map(a => ({
+    id: a.id,
+    sellerId: a.seller_id,
+    collectionName: a.collection_name,
+    basePrice: Number(a.base_price),
+    fraction: a.fraction as AssignmentFraction,
+    totalDebt: Number(a.total_debt),
+    paidAmount: Number(a.paid_amount),
+    remainingAmount: Number(a.remaining_amount),
+    status: a.status,
+    assignedDate: a.assigned_date,
+    updatedAt: a.updated_at,
+    payments: a.payments.map((p: SellerPaymentResponse) => ({
+      id: p.id,
+      assignmentId: p.assignment_id,
+      amount: Number(p.amount),
+      paymentMethod: p.payment_method,
+      reference: p.reference,
+      notes: p.notes,
+      paymentDate: p.payment_date
+    }))
+  }));
+}
+
+export async function saveAssignment(assignment: Partial<SellerAssignment>): Promise<boolean> {
+  const totalDebt = (assignment.basePrice || 0) * (assignment.fraction || 1);
+  
+  const { error } = await supabase
+    .from('seller_assignments')
+    .insert({
+      seller_id: assignment.sellerId,
+      collection_name: assignment.collectionName,
+      base_price: assignment.basePrice,
+      fraction: assignment.fraction,
+      total_debt: totalDebt,
+      paid_amount: 0,
+      remaining_amount: totalDebt,
+      status: 'pending'
+    });
+
+  return !error;
+}
+
+export async function syncAssignmentBalances(assignmentId: string) {
+  const { data: payments } = await supabase
+    .from('seller_payments')
+    .select('amount')
+    .eq('assignment_id', assignmentId);
+
+  const { data: assignment } = await supabase
+    .from('seller_assignments')
+    .select('total_debt')
+    .eq('id', assignmentId)
+    .single();
+
+  if (!assignment) return;
+
+  const totalPaid = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalDebt = Number(assignment.total_debt);
+  const remaining = Math.max(0, totalDebt - totalPaid);
+
+  let status: 'pending' | 'partial' | 'completed' = 'pending';
+  if (remaining <= 0) status = 'completed';
+  else if (totalPaid > 0) status = 'partial';
+
+  await supabase
+    .from('seller_assignments')
+    .update({
+      paid_amount: totalPaid,
+      remaining_amount: remaining,
+      status: status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', assignmentId);
+}
+
+export async function addSellerPayment(payment: Partial<SellerPayment>): Promise<boolean> {
+  const { error } = await supabase
+    .from('seller_payments')
+    .insert({
+      assignment_id: payment.assignmentId,
+      amount: payment.amount,
+      payment_method: payment.paymentMethod,
+      reference: payment.reference,
+      notes: payment.notes
+    });
+
+  if (error) return false;
+  
+  if (payment.assignmentId) {
+    await syncAssignmentBalances(payment.assignmentId);
+  }
+  
+  return true;
+}
+

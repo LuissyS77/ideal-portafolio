@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { getProductSalesStats, getSalesStats, ProductSalesStats } from '@/lib/store';
-import { StatsPeriod } from '@/lib/types';
+import { useEffect, useState, useCallback } from 'react';
+import { getProductSalesStats, getSalesStats } from '@/lib/store';
+import { StatsPeriod, SalesStats } from '@/lib/types';
 import { formatCurrency } from '@/lib/utils';
 import {
   Package,
@@ -10,7 +10,17 @@ import {
   Calendar,
   BarChart3,
   ShoppingBag,
+  Loader2,
 } from 'lucide-react';
+
+// Re-defining internal interface for stats
+interface ProductSalesStat {
+  productId: number;
+  productName: string;
+  category: string;
+  quantitySold: number;
+  totalRevenue: number;
+}
 
 const PERIOD_OPTIONS: { value: StatsPeriod; label: string }[] = [
   { value: 'daily', label: 'Hoy' },
@@ -21,11 +31,31 @@ const PERIOD_OPTIONS: { value: StatsPeriod; label: string }[] = [
 
 export default function EstadisticasPage() {
   const [period, setPeriod] = useState<StatsPeriod>('monthly');
+  const [salesStats, setSalesStats] = useState<SalesStats | null>(null);
+  const [productStats, setProductStats] = useState<ProductSalesStat[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const productStats = useMemo(() => getProductSalesStats(period), [period]);
-  const salesStats = useMemo(() => getSalesStats(period), [period]);
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [stats, products] = await Promise.all([
+        getSalesStats(period),
+        getProductSalesStats(period)
+      ]);
+      setSalesStats(stats as SalesStats);
+      setProductStats(products as ProductSalesStat[]);
+    } catch (error) {
+      console.error('Error al cargar estadísticas:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [period]);
 
-  const totalProducts = productStats.reduce((sum, p) => sum + p.quantitySold, 0);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const totalProductsSold = productStats.reduce((sum, p) => sum + p.quantitySold, 0);
 
   const getPeriodLabel = () => {
     switch (period) {
@@ -39,6 +69,17 @@ export default function EstadisticasPage() {
         return 'en total';
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Calculando estadísticas...</p>
+      </div>
+    );
+  }
+
+  if (!salesStats) return null;
 
   return (
     <div className="space-y-6">
@@ -78,7 +119,7 @@ export default function EstadisticasPage() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Productos</p>
-              <p className="text-2xl font-bold text-card-foreground">{totalProducts}</p>
+              <p className="text-2xl font-bold text-card-foreground">{totalProductsSold}</p>
             </div>
           </div>
         </div>
@@ -208,7 +249,7 @@ export default function EstadisticasPage() {
                     Total
                   </td>
                   <td className="px-6 py-4 text-center font-bold text-card-foreground">
-                    {totalProducts}
+                    {totalProductsSold}
                   </td>
                   <td className="px-6 py-4 text-right font-bold text-card-foreground">
                     {formatCurrency(salesStats.totalRevenue)}

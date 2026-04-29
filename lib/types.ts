@@ -63,3 +63,40 @@ export interface SalesStats {
 }
 
 export type StatsPeriod = 'daily' | 'weekly' | 'monthly' | 'all';
+
+// --- NUEVOS TIPOS PARA VENDEDORAS Y COLECCIONES ---
+
+export interface Seller {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  createdAt: string;
+}
+
+export type AssignmentFraction = 1 | 0.5 | 0.25;
+
+export interface SellerAssignment {
+  id: string;
+  sellerId: string;
+  collectionName: string;
+  basePrice: number;
+  fraction: AssignmentFraction;
+  totalDebt: number;
+  paidAmount: number;
+  remainingAmount: number;
+  status: 'pending' | 'partial' | 'completed';
+  assignedDate: string;
+  updatedAt: string;
+  payments?: SellerPayment[];
+}
+
+export interface SellerPayment {
+  id: string;
+  assignmentId: string;
+  amount: number;
+  paymentMethod: string;
+  reference: string;
+  notes?: string;
+  paymentDate: string;
+}
